@@ -1,17 +1,26 @@
 # Invoice Generator
 
-Automated invoice generation system that analyzes git commits and sends configurable invoices on custom schedules.
+Automated invoice generation system that analyzes **GitHub repository commits** to create accurate, deliverable-focused invoices.
+
+## Key Advantages
+
+**Why GitHub-First?** This tool fetches commits directly from GitHub repositories, giving you invoices based on what was actually delivered to your clients - not just what's on your local machine. This provides:
+- 🎯 Accurate billing based on pushed/merged code
+- 📈 Client-visible work history
+- 🔍 Transparent, auditable invoicing
 
 ## Features
 
-- 📊 Analyzes git commits across multiple repositories
+- 🚀 **GitHub-First**: Fetches commits directly from GitHub repos (what was actually delivered)
+- 📊 Smart fallback to local repositories when needed
 - 📧 Sends formatted HTML emails via Gmail
 - 🗓️ Flexible scheduling (bi-weekly, weekly, monthly, custom)
-- 🎯 Multi-client support with configuration files
-- 🧪 Test mode for safe testing
-- 📝 Categorizes work based on commit messages
+- 👥 Multi-client support with configuration files
+- 🛡️ **Safe by default**: Preview mode (display-only, no sending) unless explicitly told to send
+- 📝 Automatically categorizes work based on commit messages
 - ⏰ Configurable hours per week per client
 - 🔧 Easy to add new clients without code changes
+- 🌐 Works from anywhere on your machine with `invoice-gen` command
 
 ## Installation
 
@@ -67,7 +76,8 @@ The system uses a `invoice-configs.json` file to manage multiple invoice configu
         "fromName": "Your Name"
       },
       "git": {
-        "repos": ["/path/to/repos/*"],
+        "repos": ["owner/repo"],              // GitHub repos (primary source)
+        "repoDirs": ["/path/to/local/*"],     // Local dirs (fallback)
         "weeks": 2,
         "hoursPerWeek": 30
       }
@@ -84,45 +94,75 @@ The system uses a `invoice-configs.json` file to manage multiple invoice configu
 - **monthly-last**: Last day of each month
 - **custom**: Custom cron expression (coming soon)
 
-### Git Repository Patterns
+### Git Configuration
 
-Supports glob patterns for flexible repo matching:
-- `/opt/dev/xferall*` - All directories starting with "xferall"
-- `/opt/dev/client-*` - All directories matching pattern
-- `/path/to/specific/repo` - Single repository
+The `git` section supports two types of sources:
+
+**Primary: GitHub Repositories (`repos`)**
+- Format: `"owner/repo"` (e.g., `"xferall/xferinpatient"`)
+- Fetches commits via GitHub API using `gh` CLI
+- Shows what was actually pushed/delivered to client
+- Multiple repos supported: `["owner/repo1", "owner/repo2"]`
+
+**Fallback: Local Directories (`repoDirs`)**
+- Glob patterns supported: `"/opt/dev/xferall*"`
+- Only used if GitHub fetch returns no commits
+- Useful for offline work or historical data
+
+**Example:**
+```json
+"git": {
+  "repos": ["xferall/xferinpatient"],      // ← Try GitHub first
+  "repoDirs": ["/opt/dev/xferall*"],       // ← Fallback to local
+  "weeks": 2,
+  "hoursPerWeek": 30
+}
+```
 
 ## Usage
+
+The `invoice-gen` command works from anywhere on your system.
 
 ### List Available Configurations
 
 ```bash
-invoice
+invoice-gen
 # or
-invoice --list
+invoice-gen --list
 ```
 
-### Generate Invoice from Config
+### Generate Invoice (Default: Display Only)
 
 ```bash
-# Generate and send invoice for a specific config
-invoice xferall-biweekly
+# Preview invoice (NO EMAIL SENT - safe by default)
+invoice-gen xferall-biweekly
 
-# Test mode (only sends to yourself)
-invoice xferall-biweekly --test
-
-# Dry run (generate but don't send)
-invoice xferall-biweekly --dry-run
-
-# Verbose output
-invoice xferall-biweekly --verbose
+# With verbose output to see GitHub API calls
+invoice-gen xferall-biweekly --verbose
 ```
 
-### Legacy Command (Direct Customer Lookup)
+### Send Invoice (Test Mode)
 
 ```bash
-# Still supported for backward compatibility
-invoice legacy xferall
-invoice legacy xferall --test
+# Send ONLY to your test email (b@stokedconsulting.com)
+invoice-gen xferall-biweekly --test
+```
+
+### Send Invoice (Production with Confirmation)
+
+```bash
+# Prompts for confirmation before sending to customers
+invoice-gen xferall-biweekly --send
+
+# Example prompt:
+# "Are you sure you want to send this invoice to:
+#   - chris.mountzouris@xferall.com
+#   - tony.forma@xferall.com
+#  CC: brianstoker@gmail.com
+#
+#  [Invoice preview displayed]
+#
+#  Send invoice? (y/n)"
 ```
 
 ## Automated Scheduling

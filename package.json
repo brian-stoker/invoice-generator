@@ -4,7 +4,8 @@
   "description": "Automated invoice generator for consulting work",
   "main": "dist/index.js",
   "bin": {
-    "invoice": "./dist/cli.js"
+    "invoice": "./dist/cli.js",
+    "invoice-gen": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

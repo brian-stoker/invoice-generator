@@ -80,8 +80,8 @@ program
 // New config-based command (default)
 program
   .argument('[config-id]', 'Invoice configuration ID (from invoice-configs.json). If not provided, lists available configs.')
-  .option('-t, --test', 'Test mode - only send to b@stokedconsulting.com')
-  .option('-d, --dry-run', 'Generate invoice without sending email')
+  .option('-t, --test', 'Send to test email only (b@stokedconsulting.com)')
+  .option('-s, --send', 'Send to customer emails (with confirmation prompt)')
   .option('-v, --verbose', 'Verbose output')
   .option('-l, --list', 'List all available invoice configurations')
   .action(async (configId, options) => {
@@ -131,29 +131,82 @@ program
       console.log(invoiceData.text)
       console.log(chalk.gray('─'.repeat(60)))
 
-      if (options.dryRun) {
-        console.log(chalk.yellow('\n📋 Dry run mode - email not sent'))
+      // Default behavior: display only (safe)
+      if (!options.test && !options.send) {
+        console.log(chalk.blue('\n📋 Invoice displayed (no email sent)'))
+        console.log(chalk.gray('Use --test to send to test email'))
+        console.log(chalk.gray('Use --send to send to customers'))
         return
       }
 
-      // Send the email
-      console.log(chalk.blue('\n📧 Sending invoice email...'))
+      // Test mode
+      if (options.test) {
+        console.log(chalk.yellow('\n📧 Sending to test email...'))
 
-      const emailResult = await sendInvoiceEmailFromConfig({
-        config,
-        ...invoiceData,
-        testMode: options.test,
-        verbose: options.verbose
-      })
+        const emailResult = await sendInvoiceEmailFromConfig({
+          config,
+          ...invoiceData,
+          testMode: true,
+          verbose: options.verbose
+        })
 
-      if (emailResult.success) {
-        console.log(chalk.green(`✅ Invoice email sent successfully!`))
-        if (options.test) {
-          console.log(chalk.yellow('Test mode: Only sent to b@stokedconsulting.com'))
+        if (emailResult.success) {
+          console.log(chalk.green(`✅ Test invoice sent to b@stokedconsulting.com`))
+        } else {
+          console.error(chalk.red(`❌ Failed to send email: ${emailResult.error}`))
+          process.exit(1)
         }
-      } else {
-        console.error(chalk.red(`❌ Failed to send email: ${emailResult.error}`))
-        process.exit(1)
+        return
+      }
+
+      // Send mode (with confirmation)
+      if (options.send) {
+        console.log(chalk.yellow('\n⚠️  CONFIRMATION REQUIRED'))
+        console.log(chalk.cyan('\nInvoice will be sent to:'))
+        config.email.to.forEach(email => console.log(chalk.cyan(`  To: ${email}`)))
+        if (config.email.cc && config.email.cc.length > 0) {
+          config.email.cc.forEach(email => console.log(chalk.gray(`  CC: ${email}`)))
+        }
+        if (config.email.bcc && config.email.bcc.length > 0) {
+          config.email.bcc.forEach(email => console.log(chalk.gray(`  BCC: ${email}`)))
+        }
+
+        console.log(chalk.cyan('\nInvoice Summary:'))
+        console.log(chalk.gray(`  Period: ${invoiceData.startDate} - ${invoiceData.endDate}`))
+        console.log(chalk.gray(`  Total Hours: ${invoiceData.totalHours}`))
+        console.log(chalk.gray(`  Customer: ${config.customer}`))
+
+        // Prompt for confirmation
+        const readline = require('readline').createInterface({
+          input: process.stdin,
+          output: process.stdout
+        })
+
+        const answer = await new Promise<string>(resolve => {
+          readline.question(chalk.yellow('\n\nSend invoice? (y/n): '), resolve)
+        })
+        readline.close()
+
+        if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+          console.log(chalk.gray('\nInvoice send cancelled'))
+          return
+        }
+
+        console.log(chalk.blue('\n📧 Sending invoice to customers...'))
+
+        const emailResult = await sendInvoiceEmailFromConfig({
+          config,
+          ...invoiceData,
+          testMode: false,
+          verbose: options.verbose
+        })
+
+        if (emailResult.success) {
+          console.log(chalk.green(`\n✅ Invoice sent successfully!`))
+        } else {
+          console.error(chalk.red(`❌ Failed to send email: ${emailResult.error}`))
+          process.exit(1)
+        }
       }
 
     } catch (error) {
