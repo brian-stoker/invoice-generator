@@ -22,11 +22,14 @@
         "cc": [
           "brianstoker@gmail.com"
         ],
-        "subject": "Brian Stoker Invoice from {{startDate}} - {{endDate}}",
+        "subject": "Stoked Consulting Invoice for {{customer}} from {{startDate}} - {{endDate}}",
         "fromName": "Brian Stoker"
       },
       "git": {
         "repos": [
+          "xferall/xferinpatient"
+        ],
+        "repoDirs": [
           "/opt/dev/xferall*"
         ],
         "weeks": 2,

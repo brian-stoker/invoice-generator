@@ -16,6 +16,7 @@ interface InvoiceOptions {
   endDate?: string
   verbose?: boolean
   repoPaths?: string[]
+  githubRepos?: string[]
   hoursPerWeek?: number
 }
 
@@ -48,7 +49,7 @@ interface InvoiceData {
 }
 
 export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceData | null> {
-  const { customer, weeks = 2, verbose, repoPaths, hoursPerWeek = 30 } = options
+  const { customer, weeks = 2, verbose, repoPaths, githubRepos, hoursPerWeek = 30 } = options
 
   // Calculate date range
   let endDate: Date
@@ -72,24 +73,6 @@ export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceD
     console.log(`Analyzing commits from ${format(startDate, 'yyyy-MM-dd')} to ${format(endDate, 'yyyy-MM-dd')}`)
   }
 
-  // Get project directories from config or fallback to customer search
-  let projectDirs: string[]
-  if (repoPaths && repoPaths.length > 0) {
-    projectDirs = await resolveRepoPaths(repoPaths, verbose)
-  } else {
-    projectDirs = await getProjectDirectories(customer)
-  }
-
-  if (projectDirs.length === 0) {
-    console.error(`No project directories found`)
-    return null
-  }
-
-  if (verbose) {
-    console.log(`Found ${projectDirs.length} project directories:`)
-    projectDirs.forEach(dir => console.log(`  - ${dir}`))
-  }
-
   // Analyze commits for each week
   const weeklyWork: WeeklyWork[] = []
   let currentWeekStart = startDate
@@ -98,11 +81,15 @@ export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceD
     const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 0 })
 
     const weekWork = await analyzeWeek(
-      projectDirs,
       currentWeekStart,
       currentWeekEnd,
       hoursPerWeek,
-      verbose
+      {
+        githubRepos,
+        repoPaths,
+        customer,
+        verbose
+      }
     )
 
     weeklyWork.push(weekWork)
@@ -127,12 +114,16 @@ export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceD
 export async function generateInvoiceFromConfig(options: InvoiceOptionsFromConfig): Promise<InvoiceData | null> {
   const { config, verbose } = options
 
+  // Use repoDirs (local directories) if provided, otherwise empty
+  const repoPaths = config.git.repoDirs || []
+
   return generateInvoice({
     customer: config.customer,
     weeks: config.git.weeks,
-    repoPaths: config.git.repos,
+    repoPaths,
     hoursPerWeek: config.git.hoursPerWeek,
-    verbose
+    verbose,
+    githubRepos: config.git.repos
   })
 }
 
@@ -202,49 +193,98 @@ async function getProjectDirectories(customer: string): Promise<string[]> {
   return dirs
 }
 
+interface AnalyzeWeekOptions {
+  githubRepos?: string[]
+  repoPaths?: string[]
+  customer?: string
+  verbose?: boolean
+}
+
 async function analyzeWeek(
-  projectDirs: string[],
   weekStart: Date,
   weekEnd: Date,
   hoursPerWeek: number,
-  verbose?: boolean
+  options: AnalyzeWeekOptions
 ): Promise<WeeklyWork> {
+  const { githubRepos, repoPaths, customer, verbose } = options
   const allCommits: Array<{ message: string; date: Date; repo: string }> = []
 
-  for (const dir of projectDirs) {
-    const git: SimpleGit = simpleGit(dir)
+  // Primary: Try to get commits from GitHub repos
+  if (githubRepos && githubRepos.length > 0) {
+    if (verbose) {
+      console.log(`Fetching commits from GitHub repos: ${githubRepos.join(', ')}`)
+    }
 
-    try {
-      const log = await git.log({
-        from: format(weekStart, 'yyyy-MM-dd'),
-        to: format(weekEnd, 'yyyy-MM-dd'),
-        '--all': null
-      })
-
-      const repoName = path.basename(dir)
-
-      for (const commit of log.all) {
-        allCommits.push({
-          message: commit.message,
-          date: new Date(commit.date),
-          repo: repoName
-        })
-      }
-    } catch (error) {
-      if (verbose) {
-        console.log(`Could not read git log from ${dir}:`, error)
+    for (const repo of githubRepos) {
+      try {
+        const commits = await getGitHubCommitsForRepo(repo, weekStart, weekEnd, verbose)
+        allCommits.push(...commits)
+        if (verbose) {
+          console.log(`  Found ${commits.length} commits in ${repo}`)
+        }
+      } catch (error) {
+        if (verbose) {
+          console.log(`  Could not fetch GitHub commits from ${repo}:`, error)
+        }
       }
     }
   }
 
-  // Also check GitHub repos
-  try {
-    const githubCommits = await getGitHubCommits(weekStart, weekEnd, verbose)
-    allCommits.push(...githubCommits)
-  } catch (error) {
+  // Fallback: If no GitHub commits found, try local directories
+  if (allCommits.length === 0) {
     if (verbose) {
-      console.log('Could not fetch GitHub commits:', error)
+      console.log('No GitHub commits found, falling back to local repositories...')
     }
+
+    let projectDirs: string[] = []
+
+    // Try repoPaths first
+    if (repoPaths && repoPaths.length > 0) {
+      projectDirs = await resolveRepoPaths(repoPaths, verbose)
+    }
+    // If still no dirs and we have a customer, try customer-based search
+    else if (customer) {
+      projectDirs = await getProjectDirectories(customer)
+    }
+
+    if (verbose && projectDirs.length > 0) {
+      console.log(`Found ${projectDirs.length} local directories:`)
+      projectDirs.forEach(dir => console.log(`  - ${dir}`))
+    }
+
+    for (const dir of projectDirs) {
+      const git: SimpleGit = simpleGit(dir)
+
+      try {
+        const log = await git.log({
+          from: format(weekStart, 'yyyy-MM-dd'),
+          to: format(weekEnd, 'yyyy-MM-dd'),
+          '--all': null
+        })
+
+        const repoName = path.basename(dir)
+
+        for (const commit of log.all) {
+          allCommits.push({
+            message: commit.message,
+            date: new Date(commit.date),
+            repo: repoName
+          })
+        }
+
+        if (verbose) {
+          console.log(`  Found ${log.all.length} commits in ${repoName}`)
+        }
+      } catch (error) {
+        if (verbose) {
+          console.log(`  Could not read git log from ${dir}:`, error)
+        }
+      }
+    }
+  }
+
+  if (verbose) {
+    console.log(`Total commits found: ${allCommits.length}`)
   }
 
   // Analyze and categorize commits
@@ -263,23 +303,28 @@ async function analyzeWeek(
   }
 }
 
-async function getGitHubCommits(
+async function getGitHubCommitsForRepo(
+  repo: string,
   weekStart: Date,
   weekEnd: Date,
   verbose?: boolean
 ): Promise<Array<{ message: string; date: Date; repo: string }>> {
   const commits: Array<{ message: string; date: Date; repo: string }> = []
-  
+
   try {
     // Use gh CLI to get commits from GitHub
     const since = format(weekStart, 'yyyy-MM-dd')
     const until = format(weekEnd, 'yyyy-MM-dd')
-    
-    const { stdout } = await execAsync(
-      `gh api repos/xferall/xferinpatient/commits --paginate -q '.[] | select(.commit.author.date >= "${since}" and .commit.author.date <= "${until}") | {message: .commit.message, date: .commit.author.date}'`,
-      { maxBuffer: 10 * 1024 * 1024 }
-    )
-    
+
+    // Build the gh API command
+    const command = `gh api repos/${repo}/commits --paginate -q '.[] | select(.commit.author.date >= "${since}" and .commit.author.date <= "${until}") | {message: .commit.message, date: .commit.author.date, author: .commit.author.name}'`
+
+    if (verbose) {
+      console.log(`  Executing: ${command}`)
+    }
+
+    const { stdout } = await execAsync(command, { maxBuffer: 10 * 1024 * 1024 })
+
     if (stdout) {
       const lines = stdout.trim().split('\n').filter(line => line)
       for (const line of lines) {
@@ -288,7 +333,7 @@ async function getGitHubCommits(
           commits.push({
             message: data.message,
             date: new Date(data.date),
-            repo: 'xferinpatient'
+            repo: repo.split('/')[1] || repo
           })
         } catch {
           // Skip invalid JSON lines
@@ -297,10 +342,11 @@ async function getGitHubCommits(
     }
   } catch (error) {
     if (verbose) {
-      console.log('GitHub API error:', error)
+      console.log(`GitHub API error for ${repo}:`, error)
     }
+    // Don't throw, just return empty array so we can try other repos or fallback
   }
-  
+
   return commits
 }
 

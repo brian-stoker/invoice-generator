@@ -54,8 +54,11 @@ export interface InvoiceConfig {
 
   /** Git repository configuration */
   git: {
-    /** Repository paths (supports wildcards) */
-    repos: string[]
+    /** GitHub repositories in format "owner/repo" (primary source) */
+    repos?: string[]
+
+    /** Local repository directory paths with wildcards (fallback source) */
+    repoDirs?: string[]
 
     /** Number of weeks to analyze */
     weeks: number
