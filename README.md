@@ -1,5 +1,7 @@
 # Invoice Generator
 
+✨ **[Meet the Invoice Fairy!](https://brian-stoker.github.io/invoice-generator/)** ✨
+
 Automated invoice generation system that analyzes **GitHub repository commits** to create accurate, deliverable-focused invoices.
 
 ## Key Advantages
