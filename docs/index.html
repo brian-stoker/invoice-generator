@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Fairy - Magical Invoice Generation</title>
+    <meta name="description" content="Automated invoice generation from GitHub commits. Let the Invoice Fairy sprinkle your billing with magic!">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(180deg, #dbeafe 0%, #e9d5ff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        .fairy-container {
+            position: relative;
+            width: 600px;
+            height: 1000px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-16px); }
+        }
+
+        .wings-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        .fairy-body {
+            position: absolute;
+            width: 100%;
+            height: auto;
+            z-index: 10;
+        }
+
+        .fairy-face {
+            position: absolute;
+            top: -26px;
+            left: 190px;
+            width: 260px;
+            height: 320px;
+            object-fit: cover;
+            border-radius: 50%;
+            opacity: 0.9;
+            z-index: 20;
+            transform: scale(0.9);
+        }
+
+        .magic-particles {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .content {
+            text-align: center;
+            margin-top: 2rem;
+            max-width: 800px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .feature p {
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #8b5cf6;
+            border: 2px solid #8b5cf6;
+        }
+
+        .code-sample {
+            background: #1f2937;
+            color: #10b981;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin: 2rem 0;
+            overflow-x: auto;
+        }
+
+        .code-sample .comment {
+            color: #6b7280;
+        }
+
+        .code-sample .command {
+            color: #60a5fa;
+        }
+
+        footer {
+            margin-top: 4rem;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        footer a {
+            color: #8b5cf6;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .fairy-container {
+                width: 300px;
+                height: 500px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .tagline {
+                font-size: 1.125rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fairy-container">
+        <canvas id="wings" class="wings-canvas" width="600" height="1000"></canvas>
+        <img src="fairy/jsdocs-fairy.png" alt="Invoice Fairy" class="fairy-body" id="fairyBody">
+        <video src="fairy/face.webm" autoplay loop muted playsinline class="fairy-face"></video>
+        <canvas id="particles" class="magic-particles"></canvas>
+    </div>
+
+    <div class="content">
+        <h1>✨ Invoice Fairy ✨</h1>
+        <p class="tagline">Magical invoice generation from your GitHub commits</p>
+
+        <div class="cta-buttons">
+            <a href="https://github.com/brian-stoker/invoice-generator" class="btn btn-primary">View on GitHub</a>
+            <a href="https://github.com/brian-stoker/invoice-generator#readme" class="btn btn-secondary">Documentation</a>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h3>GitHub-First</h3>
+                <p>Fetches commits directly from GitHub repos - billing based on what you actually delivered</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <h3>Safe by Default</h3>
+                <p>Preview invoices without sending. Explicit flags required to send emails</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">👥</div>
+                <h3>Multi-Client</h3>
+                <p>Manage multiple clients with different schedules and billing rates</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">📝</div>
+                <h3>Auto-Categorize</h3>
+                <p>Smart analysis categorizes commits into bug fixes, features, refactoring, and more</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">📅</div>
+                <h3>Flexible Scheduling</h3>
+                <p>Bi-weekly, weekly, monthly, or custom schedules - fully automated</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">✅</div>
+                <h3>Confirmation Required</h3>
+                <p>Review recipients and invoice details before sending to customers</p>
+            </div>
+        </div>
+
+        <div class="code-sample">
+            <div class="comment"># Install globally</div>
+            <div class="command">$ npm install -g invoice-generator</div>
+            <br>
+            <div class="comment"># Preview invoice (safe, no sending)</div>
+            <div class="command">$ invoice-gen client-name</div>
+            <br>
+            <div class="comment"># Send to test email</div>
+            <div class="command">$ invoice-gen client-name --test</div>
+            <br>
+            <div class="comment"># Send to customers (with confirmation)</div>
+            <div class="command">$ invoice-gen client-name --send</div>
+        </div>
+
+        <footer>
+            <p>
+                Created by <strong>Brian Stoker</strong> (Product Manager)
+                and <strong>Claude</strong> (Developer)
+            </p>
+            <p>
+                Open source • <a href="https://github.com/brian-stoker/invoice-generator">GitHub</a> •
+                <a href="https://github.com/brian-stoker/invoice-generator/blob/main/LICENSE">MIT License</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Wings animation
+        const wingsCanvas = document.getElementById('wings');
+        const wingsCtx = wingsCanvas.getContext('2d');
+
+        const leftWingImg = new Image();
+        const rightWingImg = new Image();
+        leftWingImg.src = 'fairy/wing-right.png';
+        rightWingImg.src = 'fairy/wing-left.png';
+
+        let frame = 0;
+
+        function renderWings() {
+            wingsCtx.clearRect(0, 0, 600, 1000);
+
+            const spread = 4 + Math.sin(frame * 0.3) * 2;
+            const totalLayers = 20;
+
+            for (let i = 0; i < totalLayers; i++) {
+                const offset = (i - totalLayers / 2) * 0.3;
+                wingsCtx.globalAlpha = 0.03;
+
+                // Left wing
+                wingsCtx.drawImage(leftWingImg, 195, 92 + offset * spread, 120, 240);
+                // Right wing
+                wingsCtx.drawImage(rightWingImg, 430, 95 + offset * spread, 120, 240);
+            }
+
+            wingsCtx.globalAlpha = 1;
+            frame++;
+            requestAnimationFrame(renderWings);
+        }
+
+        Promise.all([
+            new Promise(r => leftWingImg.onload = r),
+            new Promise(r => rightWingImg.onload = r)
+        ]).then(() => requestAnimationFrame(renderWings));
+
+        // Magic particles
+        const particlesCanvas = document.getElementById('particles');
+        const particlesCtx = particlesCanvas.getContext('2d');
+        particlesCanvas.width = 100;
+        particlesCanvas.height = 100;
+
+        const particles = [];
+        let lastSpawn = 0;
+
+        class Particle {
+            constructor() {
+                const angle = Math.random() * 2 * Math.PI;
+                const speed = Math.random() * 0.2 + 0.1;
+                this.x = 50;
+                this.y = 50 + 92;
+                this.dx = Math.cos(angle) * speed;
+                this.dy = Math.sin(angle) * speed;
+                this.size = Math.random() * 2 + 2;
+                this.hue = 47 + Math.random() * 10 - 5;
+                this.alpha = 1;
+                this.life = 0;
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.life++;
+                this.alpha = Math.max(0, 1 - this.life / 300);
+                this.size *= 0.995;
+            }
+
+            draw() {
+                particlesCtx.beginPath();
+                particlesCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                particlesCtx.fillStyle = `hsla(${this.hue}, 100%, 75%, ${this.alpha})`;
+                particlesCtx.fill();
+            }
+        }
+
+        function renderParticles() {
+            particlesCtx.clearRect(0, 0, 100, 100);
+
+            const now = Date.now();
+            if (now - lastSpawn > 150) {
+                particles.push(new Particle());
+                lastSpawn = now;
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    p.draw();
+                }
+            }
+
+            requestAnimationFrame(renderParticles);
+        }
+
+        requestAnimationFrame(renderParticles);
+
+        // Responsive scaling
+        function scaleFairy() {
+            const container = document.querySelector('.fairy-container');
+            const width = window.innerWidth;
+            if (width < 768) {
+                const scale = width / 700;
+                container.style.transform = `scale(${scale})`;
+            } else {
+                container.style.transform = 'scale(1)';
+            }
+        }
+
+        window.addEventListener('resize', scaleFairy);
+        scaleFairy();
+    </script>
+</body>
+</html>
