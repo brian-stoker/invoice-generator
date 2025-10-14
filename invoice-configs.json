@@ -34,6 +34,15 @@
         ],
         "weeks": 2,
         "hoursPerWeek": 30
+      },
+      "ai": {
+        "enabled": true,
+        "codeAnalysis": {
+          "enabled": true
+        },
+        "lineItemGeneration": {
+          "enabled": true
+        }
       }
     }
   ]

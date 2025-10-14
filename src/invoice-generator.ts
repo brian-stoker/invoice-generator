@@ -6,6 +6,7 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import { InvoiceConfig } from './types/config'
 import { glob } from 'glob'
+import { runAIAnalysis } from './ai-analyzer'
 
 const execAsync = promisify(exec)
 
@@ -39,7 +40,7 @@ interface TaskSummary {
   commits: number
 }
 
-interface InvoiceData {
+export interface InvoiceData {
   customer: string
   startDate: string
   endDate: string
@@ -48,7 +49,7 @@ interface InvoiceData {
   weeks: WeeklyWork[]
 }
 
-export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceData | null> {
+export async function generateInvoice(options: InvoiceOptions, config?: InvoiceConfig): Promise<InvoiceData | null> {
   const { customer, weeks = 2, verbose, repoPaths, githubRepos, hoursPerWeek = 30 } = options
 
   // Calculate date range
@@ -75,12 +76,13 @@ export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceD
 
   // Analyze commits for each week
   const weeklyWork: WeeklyWork[] = []
+  const allCommits: Array<{ message: string; date: Date; repo: string }> = []
   let currentWeekStart = startDate
 
   while (currentWeekStart <= endDate) {
     const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 0 })
 
-    const weekWork = await analyzeWeek(
+    const { weekWork, commits } = await analyzeWeekWithCommits(
       currentWeekStart,
       currentWeekEnd,
       hoursPerWeek,
@@ -93,13 +95,41 @@ export async function generateInvoice(options: InvoiceOptions): Promise<InvoiceD
     )
 
     weeklyWork.push(weekWork)
+    allCommits.push(...commits)
     currentWeekStart = addWeeks(currentWeekStart, 1)
   }
 
-  // Generate invoice text
-  const invoiceText = formatInvoice(weeklyWork, customer)
-
   const totalHours = weeklyWork.reduce((sum, week) => sum + week.totalHours, 0)
+
+  // Run AI analysis if enabled
+  if (config?.ai?.enabled && allCommits.length > 0) {
+    try {
+      const aiResult = await runAIAnalysis(allCommits, totalHours, config, verbose)
+
+      // If we have AI-generated line items, use them instead of categorization
+      if (aiResult.lineItems) {
+        // Parse AI-generated line items and redistribute across weeks
+        const aiTasks = parseAILineItems(aiResult.lineItems)
+
+        // Redistribute tasks across weeks proportionally
+        weeklyWork.forEach((week, index) => {
+          const weekProportion = week.totalHours / totalHours
+          week.tasks = aiTasks.map(task => ({
+            ...task,
+            hours: Math.round(task.hours * weekProportion * 2) / 2 // Round to nearest 0.5
+          })).filter(task => task.hours > 0)
+        })
+      }
+    } catch (error) {
+      if (verbose) {
+        console.error('AI analysis failed, using standard categorization:', error)
+      }
+      // Continue with standard categorization on error
+    }
+  }
+
+  // Generate invoice text
+  const invoiceText = formatInvoice(weeklyWork)
 
   return {
     customer,
@@ -124,7 +154,7 @@ export async function generateInvoiceFromConfig(options: InvoiceOptionsFromConfi
     hoursPerWeek: config.git.hoursPerWeek,
     verbose,
     githubRepos: config.git.repos
-  })
+  }, config)
 }
 
 async function resolveRepoPaths(patterns: string[], verbose?: boolean): Promise<string[]> {
@@ -206,6 +236,16 @@ async function analyzeWeek(
   hoursPerWeek: number,
   options: AnalyzeWeekOptions
 ): Promise<WeeklyWork> {
+  const result = await analyzeWeekWithCommits(weekStart, weekEnd, hoursPerWeek, options)
+  return result.weekWork
+}
+
+async function analyzeWeekWithCommits(
+  weekStart: Date,
+  weekEnd: Date,
+  hoursPerWeek: number,
+  options: AnalyzeWeekOptions
+): Promise<{ weekWork: WeeklyWork; commits: Array<{ message: string; date: Date; repo: string }> }> {
   const { githubRepos, repoPaths, customer, verbose } = options
   const allCommits: Array<{ message: string; date: Date; repo: string }> = []
 
@@ -294,12 +334,17 @@ async function analyzeWeek(
   const totalHours = hoursPerWeek
   const tasksWithHours = distributeHours(tasks, totalHours)
 
-  return {
+  const weekWork: WeeklyWork = {
     weekStart,
     weekEnd,
     dateRange: `${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`,
     totalHours,
     tasks: tasksWithHours
+  }
+
+  return {
+    weekWork,
+    commits: allCommits
   }
 }
 
@@ -486,13 +531,38 @@ function distributeHours(tasks: TaskSummary[], totalHours: number): TaskSummary[
   return tasksWithHours.filter(task => task.hours > 0)
 }
 
-function formatInvoice(weeks: WeeklyWork[], customer: string): string {
+function parseAILineItems(lineItemsText: string): TaskSummary[] {
+  const tasks: TaskSummary[] = []
+  const lines = lineItemsText.split('\n')
+
+  for (const line of lines) {
+    // Match pattern: [number]hr - [description]
+    // or [number.5]hr - [description]
+    // Also support markdown bold: **[number]hr** - [description]
+    const match = line.match(/\*{0,2}(\d+(?:\.\d+)?)hr\*{0,2}\s*-\s*(.+)$/i)
+
+    if (match) {
+      const hours = parseFloat(match[1])
+      const description = match[2].trim()
+
+      tasks.push({
+        description,
+        hours,
+        commits: 0 // AI-generated tasks don't track commit count
+      })
+    }
+  }
+
+  return tasks
+}
+
+function formatInvoice(weeks: WeeklyWork[]): string {
   const lines: string[] = []
-  
+
   for (const week of weeks) {
     // Week header
     lines.push(`${week.dateRange} ----- ${week.totalHours}hrs`)
-    
+
     // Task details
     for (const task of week.tasks) {
       if (task.hours > 0) {
@@ -500,9 +570,9 @@ function formatInvoice(weeks: WeeklyWork[], customer: string): string {
         lines.push(`${hoursStr}hr - ${task.description}`)
       }
     }
-    
+
     lines.push('') // Empty line between weeks
   }
-  
+
   return lines.join('\n').trim()
 }

@@ -67,6 +67,30 @@ export interface InvoiceConfig {
     hoursPerWeek: number
   }
 
+  /** AI-powered analysis configuration */
+  ai?: {
+    /** Enable AI-powered invoice generation */
+    enabled: boolean
+
+    /** Stage 1: Analyze code changes and commits */
+    codeAnalysis?: {
+      /** Enable detailed code change analysis */
+      enabled: boolean
+
+      /** Custom prompt for code analysis (optional) */
+      prompt?: string
+    }
+
+    /** Stage 2: Generate specific invoice line items */
+    lineItemGeneration?: {
+      /** Enable AI-generated line items */
+      enabled: boolean
+
+      /** Custom prompt for line item generation (optional) */
+      prompt?: string
+    }
+  }
+
   /** Optional custom settings */
   custom?: {
     /** Any additional metadata */

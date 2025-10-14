@@ -192,6 +192,13 @@
             text-decoration: underline;
         }
 
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
         @media (max-width: 768px) {
             .fairy-container {
                 width: 300px;
@@ -209,6 +216,10 @@
             .features {
                 grid-template-columns: 1fr;
             }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -222,7 +233,7 @@
 
     <div class="content">
         <h1>✨ Invoice Fairy ✨</h1>
-        <p class="tagline">Magical invoice generation from your GitHub commits</p>
+        <p class="tagline">AI-powered invoice generation from your GitHub commits - sprinkle your billing with magic!</p>
 
         <div class="cta-buttons">
             <a href="https://github.com/brian-stoker/invoice-generator" class="btn btn-primary">View on GitHub</a>
@@ -249,9 +260,9 @@
             </div>
 
             <div class="feature">
-                <div class="feature-icon">📝</div>
-                <h3>Auto-Categorize</h3>
-                <p>Smart analysis categorizes commits into bug fixes, features, refactoring, and more</p>
+                <div class="feature-icon">🤖</div>
+                <h3>AI-Powered Analysis</h3>
+                <p>Claude analyzes your commits and generates specific, detailed invoice line items - no more generic descriptions</p>
             </div>
 
             <div class="feature">
@@ -264,6 +275,28 @@
                 <div class="feature-icon">✅</div>
                 <h3>Confirmation Required</h3>
                 <p>Review recipients and invoice details before sending to customers</p>
+            </div>
+        </div>
+
+        <h2 style="font-size: 2rem; margin-top: 3rem; margin-bottom: 1rem; color: #1f2937;">AI-Powered Magic</h2>
+        <div class="comparison-grid">
+            <div style="background: rgba(255, 255, 255, 0.8); padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <h3 style="color: #6b7280; margin-bottom: 1rem;">❌ Generic Categories</h3>
+                <ul style="list-style: none; color: #6b7280; line-height: 2;">
+                    <li>• Bug fixes and error resolution</li>
+                    <li>• New feature development</li>
+                    <li>• Code refactoring</li>
+                    <li>• Documentation updates</li>
+                </ul>
+            </div>
+            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <h3 style="color: white; margin-bottom: 1rem;">✨ AI-Generated Specifics</h3>
+                <ul style="list-style: none; color: white; line-height: 2; font-size: 0.875rem;">
+                    <li>• Transfer Center performance optimization with lazy-loading (9hr)</li>
+                    <li>• Level of care filtering system for inbound transfers (6hr)</li>
+                    <li>• Database-driven release notes management (4hr)</li>
+                    <li>• Feature flag infrastructure integration (4hr)</li>
+                </ul>
             </div>
         </div>
 

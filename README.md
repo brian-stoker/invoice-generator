@@ -14,6 +14,8 @@ Automated invoice generation system that analyzes **GitHub repository commits** 
 ## Features
 
 - 🚀 **GitHub-First**: Fetches commits directly from GitHub repos (what was actually delivered)
+- 🤖 **AI-Powered Analysis**: Uses Claude to generate specific, detailed invoice line items instead of generic categories
+- 💾 **Invoice Storage**: All invoices automatically saved - generate multiple versions, pick the best one to send
 - 📊 Smart fallback to local repositories when needed
 - 📧 Sends formatted HTML emails via Gmail
 - 🗓️ Flexible scheduling (bi-weekly, weekly, monthly, custom)
@@ -82,6 +84,15 @@ The system uses a `invoice-configs.json` file to manage multiple invoice configu
         "repoDirs": ["/path/to/local/*"],     // Local dirs (fallback)
         "weeks": 2,
         "hoursPerWeek": 30
+      },
+      "ai": {
+        "enabled": true,                      // Enable AI-powered analysis
+        "codeAnalysis": {
+          "enabled": true                     // Stage 1: Analyze code changes
+        },
+        "lineItemGeneration": {
+          "enabled": true                     // Stage 2: Generate line items
+        }
       }
     }
   ]
@@ -95,6 +106,46 @@ The system uses a `invoice-configs.json` file to manage multiple invoice configu
 - **monthly-first**: First day of each month
 - **monthly-last**: Last day of each month
 - **custom**: Custom cron expression (coming soon)
+
+### AI-Powered Analysis (Optional)
+
+Enable AI-powered invoice generation for specific, detailed line items instead of generic categories:
+
+```json
+"ai": {
+  "enabled": true,
+  "codeAnalysis": {
+    "enabled": true,
+    "prompt": "Custom prompt for code analysis (optional)"
+  },
+  "lineItemGeneration": {
+    "enabled": true,
+    "prompt": "Custom prompt for line item generation (optional)"
+  }
+}
+```
+
+**How it works:**
+
+1. **Stage 1 - Code Analysis**: Claude analyzes all git commits to understand what was actually built, fixed, or improved
+2. **Stage 2 - Line Item Generation**: Claude converts the technical analysis into professional, client-friendly invoice line items with hour estimates
+
+**Example output without AI:**
+- Bug fixes and error resolution
+- New feature development
+- Code refactoring and optimization
+
+**Example output with AI:**
+- Transfer Center performance optimization and feature enhancements including lazy-loading implementation and attachment viewing capabilities (9hr)
+- Development of level of care filtering system with selectable options for inbound transfer management (6hr)
+- Design and implementation of database-driven release notes management system with active status controls (4hr)
+
+**Requirements:**
+- `claude` CLI must be installed and available in your PATH
+- Claude Code authentication must be set up
+
+**Custom Prompts:**
+You can customize the prompts for each stage to fit your business needs. See the default prompts in `src/ai-analyzer.ts` for examples.
 
 ### Git Configuration
 
@@ -139,9 +190,11 @@ invoice-gen --list
 # Preview invoice (NO EMAIL SENT - safe by default)
 invoice-gen xferall-biweekly
 
-# With verbose output to see GitHub API calls
+# With verbose output to see GitHub API calls and AI analysis
 invoice-gen xferall-biweekly --verbose
 ```
+
+**Note:** All generated invoices are automatically saved to `.invoices/` directory for later sending.
 
 ### Send Invoice (Test Mode)
 
@@ -155,17 +208,35 @@ invoice-gen xferall-biweekly --test
 ```bash
 # Prompts for confirmation before sending to customers
 invoice-gen xferall-biweekly --send
-
-# Example prompt:
-# "Are you sure you want to send this invoice to:
-#   - chris.mountzouris@xferall.com
-#   - tony.forma@xferall.com
-#  CC: brianstoker@gmail.com
-#
-#  [Invoice preview displayed]
-#
-#  Send invoice? (y/n)"
 ```
+
+### Send a Previously Generated Invoice
+
+Generate multiple invoices, refine them with AI, then pick the best one to send:
+
+```bash
+# List and send a previously generated invoice
+invoice-gen xferall-biweekly --send-existing
+
+# Interactive prompts:
+# 1. Select invoice from list (shows date range and generation time)
+# 2. Preview the invoice text
+# 3. Choose: Send to test email, Send to customers, or Cancel
+```
+
+**Workflow example:**
+```bash
+# Generate invoice #1
+invoice-gen xferall-biweekly
+
+# Generate invoice #2 with different data
+invoice-gen xferall-biweekly
+
+# Review both and send the better one
+invoice-gen xferall-biweekly --send-existing
+```
+
+All sent invoices are marked with `[SENT]` label and include timestamp.
 
 ## Automated Scheduling
 
@@ -302,8 +373,11 @@ invoice-generator/
 │   ├── scheduler.ts           # Automated scheduler
 │   ├── config-loader.ts       # Configuration management
 │   ├── invoice-generator.ts   # Invoice generation logic
+│   ├── invoice-storage.ts     # Invoice saving/loading
+│   ├── ai-analyzer.ts         # AI-powered analysis
 │   └── email-sender.ts        # Email sending logic
 ├── invoice-configs.json       # Invoice configurations
+├── .invoices/                 # Saved invoices (not in git)
 ├── .env                       # Gmail credentials (not in git)
 └── package.json
 ```
