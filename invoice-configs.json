@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "global": {
+    "defaultFromEmail": "b@stokedconsulting.com",
+    "defaultBcc": ["b@stokedconsulting.com"]
+  },
+  "invoices": [
+    {
+      "id": "xferall-biweekly",
+      "name": "Xferall Bi-Weekly Invoice",
+      "customer": "Xferall",
+      "enabled": true,
+      "schedule": {
+        "type": "bi-weekly-sunday",
+        "startDate": "2024-09-15"
+      },
+      "email": {
+        "to": [
+          "brianstoker+tony@gmail.com",
+          "brianstoker+chris@gmail.com"
+        ],
+        "cc": [
+          "brianstoker@gmail.com"
+        ],
+        "subject": "Brian Stoker Invoice from {{startDate}} - {{endDate}}",
+        "fromName": "Brian Stoker"
+      },
+      "git": {
+        "repos": [
+          "/opt/dev/xferall*"
+        ],
+        "weeks": 2,
+        "hoursPerWeek": 30
+      }
+    }
+  ]
+}

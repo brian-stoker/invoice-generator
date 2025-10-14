@@ -1,0 +1,30 @@
+{
+  "name": "invoice-generator",
+  "version": "1.0.0",
+  "description": "Automated invoice generator for consulting work",
+  "main": "dist/index.js",
+  "bin": {
+    "invoice": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "tsx src/cli.ts xferall --test",
+    "invoice": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@types/node": "^20.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^11.0.0",
+    "date-fns": "^2.30.0",
+    "dotenv": "^16.3.1",
+    "glob": "^11.0.3",
+    "nodemailer": "^6.9.7",
+    "simple-git": "^3.20.0"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.14",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
