@@ -324,7 +324,31 @@ invoice your-config-id --test --dry-run --verbose
 
 ## Contributing
 
-This is a personal project, but feel free to fork and adapt for your own use!
+We welcome contributions from everyone! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+### Quick Start
+
+1. **Report a bug** or **suggest a feature**: [Open an issue](https://github.com/brian-stoker/invoice-generator/issues/new/choose)
+2. **Submit a PR**: Fork, make changes, submit a pull request
+3. **Ask questions**: Open an issue with the `question` label
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### Areas We'd Love Help With
+
+- 🎨 CLI output improvements
+- 📊 Better commit categorization
+- 🔧 Custom schedule types
+- 🌍 Internationalization
+- 📝 Documentation
+- 🧪 Testing
+- 🐛 Bug fixes
+
+All contributors are recognized in commit history and releases!
+
+## Code of Conduct
+
+We're committed to providing a welcoming and inclusive environment. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details.
 
 ## Credits
 
